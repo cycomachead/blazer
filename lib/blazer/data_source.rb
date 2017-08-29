@@ -41,7 +41,7 @@ module Blazer
     end
 
     def smart_variables
-      settings["smart_variables"] || {}
+      (settings["smart_variables"] || {}).merge(inferred_smart_columns)
     end
 
     def variable_defaults
@@ -153,6 +153,21 @@ module Blazer
     end
 
     protected
+
+    def inferred_smart_columns
+      inferred_smart_columns = {}
+      models = *ActiveRecord::Base.descendants
+      if defined? ApplicationRecord
+        models.push(*ApplicationRecord.descendants)
+      end
+      models.each do |model|
+        return unless model.method_defined?(:defined_enums)
+        model.defined_enums.each do |coulumn, enum_hash|
+          inferred_smart_columns[coulumn] = enum_hash.invert
+        end
+      end
+      inferred_smart_columns
+    end
 
     def run_statement_helper(statement, comment, run_id)
       start_time = Time.now
